@@ -4631,6 +4631,13 @@ bool CoreChecks::ValidateBufferImageCopyData(const debug_report_data *report_dat
         // If the the calling command's VkImage parameter's format is not a depth/stencil format,
         // then bufferOffset must be a multiple of the calling command's VkImage parameter's element size
         uint32_t element_size = FormatElementSize(image_state->createInfo.format);
+        if (pRegions[i].imageSubresource.aspectMask &
+            (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT)) {
+            VkFormat format =
+                FindMultiplaneCompatibleFormat(image_state->createInfo.format, pRegions[i].imageSubresource.aspectMask);
+            element_size = FormatElementSize(format);
+        }
+
         if (!FormatIsDepthAndStencil(image_state->createInfo.format) && SafeModulo(pRegions[i].bufferOffset, element_size) != 0) {
             skip |= log_msg(report_data, VK_DEBUG_REPORT_ERROR_BIT_EXT, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
                             HandleToUint64(image_state->image), "VUID-VkBufferImageCopy-bufferOffset-00193",
@@ -4840,6 +4847,11 @@ static inline bool ValidateBufferBounds(const debug_report_data *report_data, IM
                 default:
                     break;
             }
+        } else if (pRegions[i].imageSubresource.aspectMask &
+                   (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT)) {
+            VkFormat format =
+                FindMultiplaneCompatibleFormat(image_state->createInfo.format, pRegions[i].imageSubresource.aspectMask);
+            unit_size = FormatElementSize(format);
         }
 
         if (FormatIsCompressed(image_state->createInfo.format) || FormatIsSinglePlane_422(image_state->createInfo.format)) {
